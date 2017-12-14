@@ -1,0 +1,13 @@
+code {
+  background-color: #F3E5AB;
+}
+
+pre  {
+  padding: 16px;
+  overflow: auto;
+  font-size: 85%;
+  line-height: 1.45;
+  background-color: #F3E5AB;
+  border-radius: 3px;
+};
+

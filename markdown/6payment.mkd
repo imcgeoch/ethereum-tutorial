@@ -1,0 +1,231 @@
+#Adding Payment
+A board that anybody can update is alright, but we'll make fuller use of Ethereum by introducing ownership and payment. We're going to add the following features:
+
+* All cells can have an owner and a price.
+* Initially, every cell is owned by nobody and its price is zero.
+* Anybody can become the owner of a cell by transferring to the contract Ether equal to or greater than the price (purchasing the cell).
+* Only the owner of a cell can modify it.
+* The owner of a cell can set that cell's price.
+* When somebody purchases a cell, the previous owner gets the Ether paid by the new owner. 
+
+An owner, in this case, is an Ethereum address. For the functions that only the owner is allowed to execute, the contract will process a transaction that is sent by the proper address, and it will reject one sent by other addresses. 
+
+## Billboard.sol
+Add in the following code to the contract:
+
+    modifier onlyOwner(uint16 _cell) {
+		require (msg.sender == cells[_cell].owner);
+		_;
+	}
+	
+    mapping(address => uint) pendingWithdrawals;
+	
+    function purchase(uint16 cell) public payable onBoard(cell) returns (bool){
+		uint amt = msg.value;
+		require(amt >= cells[cell].price);
+    
+		pendingWithdrawals[cells[cell].owner] += amt;
+		cells[cell].owner = msg.sender;
+	}	
+
+    function setPrice(uint16 cell, uint newprice) 
+	         onBoard(cell) onlyOwner(cell) 
+					 public {
+		cells[cell].price = newprice;
+	}
+	
+	function withdraw() {
+        uint amount = pendingWithdrawals[msg.sender];
+		pendingWithdrawals[msg.sender] = 0;
+		msg.sender.transfer(amount);
+	}
+
+and add the modifier `onlyOwner` to the `change` function, so that it looks like:
+
+    function change(uint16 cell, bytes4 character)
+      onBoard(cell) onlyOwner(cell) public {
+      characters[cell] = character;
+    }
+
+
+Let's look though what we've done.
+
+### The onlyOwner modifier
+We use a modifier, like the one we introduced in the previous chapter, to enforce that functions can only be called by the owner. The modifier uses the `msg.sender` value, which contains the address that sent the transaction that invoked the function. 
+
+### Setting a price
+The `setPrice` function is relatively straightforward. It uses the `onlyOwner` and `onBoard` modifiers to make sure that the transaction is being sent by the owner and that a real cell is being referenced. It updates the price value in the referenced element of the `cells` array. 
+
+### Sending Ether
+For handling money, we require a couple extra steps for security. We have a *mapping* from addresses to 256-bit ints called `pendingWithdrawals`. This contains the amount that is owed by the contract to each address. We use this method instead of sending the Ether automatically in the `purchase` function as a security measure. We do not know whether the destination address is a regular wallet address or a contract, and if it is a contract, whether it is malicious or flawed. Because of this, we do not want to transfer Ether out except in a dedicated function, which we call `withdraw`.
+
+The `purchase` function uses `msg.value` to access the amount of money sent in the transaction that called it. First it confirms that the transation is valuable enough, compared to the purchase price of the cell. Then it increments `pendingWithdrawals` for the old owner's address and assigns the cell to the new owner.
+
+The `withdraw` function first zeroes out the entry in `pendingWithdrawals`, and then transfers the amount that was there to the address that called `withdraw`. Note that any address can call `withdraw`, but that it will only receive Ether if it is owed money. 
+
+The order that these functions operate in is important. Note that if `withdraw` sent the Ether before zeroing out the ledger, by sending just the right amount of gas, an attacker could cause the contract to pay out but run out before recording that the payment happened.
+
+## App.js
+
+In App.js, we'll add a few more methods to call the functions in the contract. To the `App` component, add:
+
+    setPrice(index, newSetting) {
+        var billboardInstance
+        // Get accounts.
+        this.state.web3.eth.getAccounts((error, accounts) => {
+            this.billboard.deployed().then((instance) => {
+                billboardInstance = instance;
+                console.log(billboardInstance);
+                return billboardInstance.setPrice(index, newSetting, {from: accounts[0]})
+            }).then((result) => {alert(result)})
+        })
+    }
+
+
+    withdraw(){
+        var billboardInstance
+        this.state.web3.eth.getAccounts((error,accounts) => {
+            this.billboard.deployed().then((instance) => {
+                billboardInstance = instance;
+                return billboardInstance.withdraw( {"from" : accounts[0]})
+            }).then((result) => {alert(result) })
+        })
+    }
+
+
+    showCell(index) {
+        var billboardInstance
+        this.state.web3.eth.getAccounts((error, accounts) => {
+            this.billboard.deployed().then((instance) => {
+                billboardInstance = instance;
+                return billboardInstance.cells.call(index)
+            }).then(result => {
+                this.setState({selectedprice: result[0].toString(), selectedowner: result[1]})
+            })
+        })
+    }
+
+    purchase(index, amount) {
+        var billboardInstance
+        // get accounts
+        this.state.web3.eth.getAccounts((error, accounts) => {
+            this. billboard.deployed().then((instance) => {
+                billboardInstance = instance;
+                return billboardInstance.purchase.sendTransaction(index,
+                    {"from":accounts[0],
+                     "value": amount })
+            }).then((result) => {alert(result)})
+        })
+    }
+
+We're also going to want a couple handlers for the forms in the action bar. In the `App` component, add
+
+    handleBuyChange(e) {
+      this.setState({buyamt: e.target.value})
+    }
+
+    handleSetChange(e) {
+      this.setState({setamt: e.target.value})
+    }
+
+And bind them in in the constructor of the `App` component:
+
+    this.handleBuyChange = this.handleBuyChange.bind(this)
+    this.handleSetChange = this.handleSetChange.bind(this)
+
+Finally, let's add the elements to the `render()` method of the `App` component. Inside the `action-bar` div, after the `change` form, add in:  
+
+                <div className="action">
+                <form id="buy">
+                  Amount in Wei:
+                  <input type="text" name="val"
+                   value={this.state.buyamt} onChange={this.handleBuyChange}/>
+                </form>
+
+                <button onClick={() => this.purchase(this.state.current,
+                                                    this.state.buyamt)}>
+                  buy cell
+                </button>
+                </div>
+
+                <div className="action">
+                <form id="setPrice">
+                  Amount in Wei:
+                  <input type="text" name="val" value={this.state.setamt}
+                   onChange={this.handleSetChange}/>
+                </form>
+                <button onClick={() => this.setPrice(this.state.current,
+                                                     this.state.setamt)}>
+                  set cell price
+                </button>
+                </div>
+                <div className="action">
+                <button onClick={() => this.showCell(this.state.current)}>
+                  Query!
+                </button>
+                <p> Price in Wei : {this.state.selectedprice}</p>
+                <p> Owner : {this.state.selectedowner}</p>
+                </div>
+                <div className="action">
+                <button onClick={() => this.withdraw()}>
+                  Withdraw!
+                </button>
+                </div>
+
+
+We've added elements that *buy*, *set price*, and *withdraw*, calling the functions we created earlier in the contract. We've also added one called *query* which returns information about a cell. These follow the same pattern as the action element in the previous chapter, but are slightly simpler.
+
+![The complete top bar](images/chap6/topbarfull.png)
+
+
+For the "Query" button, you might notice that the code that calls the contract, `billboardInstance.cells.call(index)`, does not correspond to a function we wrote in the contract; its name matches the `cells` array. As previously mentioned, contracts written in Solidity automatically have getters like this for public variables, without the need to write them. So why did we need to create the "getCells" function earlier? The automatically generated getter for an array returns individual elements like we're doing here. In the earlier case, we wanted to get the entire array at once, so we needed to write our own.
+
+## Trying it out
+From the root directory of your project, with a fresh instance of `testrpc` running, again run
+
+    truffle compile
+    truffle migrate
+    npm run dev
+
+
+Get MetaMask set up using the mnenomic provided by testrpc, as we have done previously. In addition, let's add another wallet. You may have noticed that testrpc provides a list of 10 addresses. We can access the first one by using the menemonic, and we can import the others by their private keys if we need them. Using the icon in the upper right, select "import..." and paste in one of the private keys (other than the first one, number 0) that testrpc generated. 
+
+We now have two accounts in our MetaMask wallet, and we can switch between them. For now, switch back to Account 1. We'll use the second one later to test out the ability to purchase an owned cell and to later withdraw those funds from the purchase.
+
+### Changing an unowned cell
+
+
+The rules of our contract state that only the owner of a cell can modify it. Because all of the cells start without an owner, we should not be able to modify any of the cells before purchasing it. 
+
+![Metamask shows the transaction will fail](images/chap6/mmaskreject.png)
+
+If we pick any cell and press the "change" button, MetaMask will pop up and ask us to send the transaction, but something is different. The suggested amount of gas is 0, which is a sign that the transaction will fail to execute. Indeed, if you try it out, you will find that no matter what amount of gas you provide, the cell will not change.
+
+### Purchasing and changing a cell
+Select a cell, and then enter any amount into the "purchase" dialog. (Remember, the cost of every cell starts at zero, so you could purchase the cell for zero wei, if you so choose). 
+
+![Purchasing a cell](images/chap6/buycell.png)
+
+MetaMask will give you the familiar notification asking you to approve the transfer, and if you've entered a large enough number you'll see the fact that you're sending money reflected in the dialog. 
+
+Once the purchase is submitted, you will be able to change the cell, provided you're using the same address that purchased it.
+
+### Setting a price
+Now that you've changed the cell, let's set a price on it so that others can buy it from us. In the "Set price" dialog, enter 10000000000000000000 (That's 10^19 wei, or 10 ETH). With a nice big number like this, we'll be able to tell that the withdrawal worked. 
+
+### Purchasing an owned cell
+In MetaMask, switch over to your other account. Select the cell you purchased with the first account, and click the "query" button. The screen will update to report that the first account is the owner of the cell, as well as the cell's new cost. 
+
+![The second Account](images/chap6/account2.png)
+
+If MetaMask is open to the second account, you can no longer modify the cell, because that account is not the owner.
+
+In the "purchase" dialog, enter 10000000000000000000, enough to cover the cost sent by the first account. Submit the transaction and approve it it MetaMask. Querying the cell again will reveal that the owner has changed to the second account. 
+
+### Withdrawing funds
+Account 1 has made a sale, and quite a profit! Switch back to that account and click the "Withdraw" button. You'll have to provide a little extra gas beyond what MetaMask suggests. Approve the transaction, and watch the money flow in. Once it goes through, Account 1 will be 10 ETH richer.
+
+![1 Eth richer!](images/chap6/101eth.png)
+
+
+[Previous Chapter](chap5.html) [Home Page](index.html) [Next Chapter](chap7.html)

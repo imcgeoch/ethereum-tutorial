@@ -1,0 +1,120 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta name="generator" content="ReText 7.0.0">
+<title>5changingcells</title>
+</head>
+<body>
+<h1>Modifying the board</h1>
+<p>Our users should be able to imake changes to the state of the contract. </p>
+<p>We'll add a function to our contract that changes the contents of a cell. Then, we'll add an interface for this function to our front-end. </p>
+<h2>Billboard.sol</h2>
+<p>We should add a function to our contract that, when called, updates the state of the board. Add the following code to the contract.</p>
+<pre><code>function change(uint16 cell, bytes4 character)
+    onboard(cell) public {
+    characters[cell] = character;
+}
+</code></pre>
+<p>This function takes two arguments: an int specifying which cell to change, and a 4-byte value specifying what value to set it to. </p>
+<p>The body of the function simply updates the value of the <code>characters</code> array.</p>
+<p>Notice the <code>onboard(cell)</code> in the signature of the function. This is a <strong>modifier</strong>, a feature of Solidity that allows us to change the behavior of a function. They're commonly used to check conditions, as we're doing here.</p>
+<p>Add the following code to the contract to provide the modifier:</p>
+<pre><code>modifier onBoard(uint16 _cell) {
+  require (_cell &lt; 3200);
+  _;
+}
+</code></pre>
+<p>When our function is called, it first passes the <code>cell</code> argument to the modifer, which checks that it is a valid index. Then, it executes the function. </p>
+<p>These are all the changes we need to the contract for now. Run</p>
+<pre><code>truffle compile
+truffle migrate
+</code></pre>
+<p>to compile and deploy the changes.</p>
+<h2>App.js</h2>
+<p>Our additions to the front-end will be more substantial. </p>
+<h3>changeCell()</h3>
+<p>First, in the App component, add the following function:</p>
+<pre><code>changeCell(index, newSetting) {
+  var billboardInstance
+  this.state.web3.eth.getAccounts((error, accounts) =&gt; {
+    this.billboard.deployed().then((instance) =&gt; {
+      billboardInstance = instance;
+      return billboardInstance.change(index, newSetting, {from: accounts[0]})
+    }).then((result) =&gt; { alert(result);
+         var newchars = this.state.chars;
+         newchars[index] = newSetting;
+         this.setState({chars : newchars});
+       })
+  })
+}
+</code></pre>
+<p>Notice its similarity to <code>instantiateContract()</code> from the previous chapter. One difference is that where in <code>instantiateContract()</code> we used <code>.call()</code> to execute the function locally, here we need to actually modify the blockchain, which means that we call <code>change()</code> directly. </p>
+<h3>render()</h3>
+<p>In the App component's <code>render()</code> function, after the <code>topBar</code> div and before the <code>board</code> div, add the following code:</p>
+<pre><code>&lt;div className="action-bar"&gt;
+  &lt;div className="action"&gt;
+    &lt;form id="change"&gt;
+      Character:
+      &lt;input type="text" name="chr"
+        value={this.state.cellch}
+        onChange={this.handleCellChChange}/&gt;
+      &lt;input type="range" name="chrs" value={this.state.cellch}
+        onChange={this.handleCellChChange} min="0" max="255"/&gt;
+      Color:
+      &lt;input type="text" name="clr" value={this.state.cellcolor}
+        onChange={this.handleCellColorChange}/&gt;
+     &lt;/form&gt;
+     &lt;div style = {{color : '#' + this.state.cellcolor}}&gt;
+       {String.fromCharCode(this.state.cellch)}
+     &lt;/div&gt;
+     &lt;button onClick={() =&gt;
+       this.changeCell(
+       this.state.current,
+       (this.state.cellch&lt;&lt;24) + parseInt(this.state.cellcolor, 16)
+      )}&gt; Change Cell &lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+</code></pre>
+<p>We're going to begin to add a section, which we'll call the action-bar, where the user can access the functions in the contract. For now, the only action we've added is for changing the contents of cells.  </p>
+<p>The user can enter the character as its ASCII character code in decimal, or use the slider as a convenience. The color is to be entered as a six-digit hex code. A preview of the character to be entered is provided. When the user clicks the button, the app calls the <code>changeCell()</code> method, which calls the function in the contract.</p>
+<p><img alt="Setting a cell's value" src="images/chap5/cellslider.png"></p>
+<h3>handlers</h3>
+<p>Our form uses handler methods to keep the components up-to-date with the changes the user enters. Add these two methods to the App component:</p>
+<pre><code>handleCellChChange(e) {
+  this.setState({cellch : e.target.value})
+}
+handleCellColorChange(e) {
+  this.setState({cellcolor : e.target.value})
+}
+</code></pre>
+<p>and add these lines to the constructor of the App component:</p>
+<pre><code>this.handleCellChChange = this.handleCellChChange.bind(this)
+this.handleCellColorChange = this.handleCellColorChange.bind(this)
+</code></pre>
+<h2>App.css</h2>
+<p>Add the following to your App.css file:</p>
+<pre><code>.action {
+  float : left;
+  border : 2px solid black;
+}
+
+.action button {
+  border: 2px solid black;
+  padding: 5px;
+  margin: 5px;
+}
+</code></pre>
+<p>This makes our action bar look a little nicer. </p>
+<h1>Running the contract</h1>
+<p>With <code>testrpc</code> running, the contract deployed, run</p>
+<pre><code>npm run start
+</code></pre>
+<p>Make sure that your wallet is open in MetaMask, because it's needed to interact with the blockchain. </p>
+<p>To set the value of a cell, first click on the cell to select it, choose a character and a color, and then the "change cell" button. </p>
+<p>You'll see a pop-up from MetaMask asking you to approve the transaction (it will cost some gas). Approve the transaction and you'll see the change reflected on the board. The change has been made to the blockchain, so as long as you leave <code>testrpc</code> running, the change will persist, even if you close chrome and re-open it. </p>
+<p><img alt="Setting a cell" src="images/chap5/mmaskconfirm.png"></p>
+<p>Great! We have written a contract with a tangible effect, and we are able to interact with it through our front-end. Right now, there are no restrictions on who can interact with the contract. In the next chapter we'll introduce ownership of cells. </p>
+<p><a href="chap4.html">Previous Chapter</a> <a href="index.html">Home Page</a> <a href="chap6.html">Next Chapter</a></p>
+</body>
+</html>

@@ -1,0 +1,266 @@
+# Building the Front-end
+
+It's time to get switch gears from solidity to react.js and create our web front end. We'll start with a file to copy in, and then move through and discuss the function of each piece. 
+
+## App.js
+In the directory `src/`, delete everything in the existing `App.js` and replace it with thie following
+### The Code
+    import React, { Component } from 'react'
+    import BillboardContract from '../build/contracts/Billboard.json'
+    import getWeb3 from './utils/getWeb3'
+    
+    import './css/oswald.css'
+    import './css/open-sans.css'
+    import './css/pure-min.css'
+    import './App.css'
+    
+    class App extends Component {
+    
+      contract = require('truffle-contract')
+      billboard = this.contract(BillboardContract)
+    
+      constructor(props) {
+        super(props)
+    
+        this.state = {
+          chars : []
+        }
+        this.setCurrent = this.setCurrent.bind(this)
+      }
+    
+      componentWillMount() {
+        // Get network provider and web3 instance.
+        // See utils/getWeb3 for more info.
+    
+        getWeb3
+        .then(results => {
+          this.setState({
+            web3: results.web3
+          })
+    
+          // Instantiate contract once web3 provided.
+          this.billboard.setProvider(this.state.web3.currentProvider)
+          this.instantiateContract()
+        })
+        .catch(() => {
+          console.log('Error finding web3.')
+        })
+      }
+    
+      instantiateContract() {
+        // Declaring this for later so we can chain functions on Billbaord.
+        var billboardInstance
+    
+        // Get accounts.
+        this.state.web3.eth.getAccounts((error, accounts) => {
+          this.billboard.deployed().then((instance) => {
+            billboardInstance = instance
+            return billboardInstance.getCells.call()
+          }).then((result) => {
+            return this.setState({ chars: result })
+          })
+        })
+      }
+    
+      boardIndices(){
+        var a = [...Array(3200).keys()];
+        var b = [];
+        for (var i = 0; i < 3200; i +=80) {
+          b.push(a.slice(i, i+80))
+        }
+        return b
+      }
+
+      pad6(s) {
+        while (s.length < 6) {
+          s = '0' + s
+        }
+        return s
+      }
+
+
+      setCurrent(index) {
+        this.setState({current : index})
+        var c = this.state.chars[index]
+        this.setState({cellch : (c >>> 24).toString(16)})
+        this.setState({cellcolor : this.pad6((c & 0xFFFFFF).toString(16))})
+      }
+    
+      render() {
+        return (
+          <div className="App">
+            <nav className="navbar pure-menu pure-menu-horizontal">
+                <a href="#" className="pure-menu-heading pure-menu-link">Billboard</a>
+            </nav>
+    
+            <main className="container">
+              <div className="pure-g">
+                <div className="pure-u-1-1">
+                   <div className="topBar">Current Cell = {this.state.current}</div>
+                   <div className="board">
+                     <Board chars={this.state.chars}
+                                   indices = {this.boardIndices()}
+                                   f = {this.setCurrent}/>
+                     </div>
+                </div>
+              </div>
+            </main>
+          </div>
+        );
+      }
+    }
+    
+    class Tile extends Component {
+    
+        render() {
+          var style = {
+            color: '#' + this.props.color,
+          };
+          return(
+              <button className="tile" style={style}
+                      onClick={() => this.props.func(this.props.i)}>
+                {this.props.value}
+              </button>
+            );
+        }
+    }
+    
+    class Board extends Component {
+      padColor(s) {
+        var str = '' + s;
+        while (str.length < 6) str = '0' + str;
+        return str;
+      }
+      renderTile(i) {
+        var c = this.props.chars[i]
+        var ch = String.fromCharCode(c >>> 24);
+        var co = (c & 0x00AAAAAA).toString(16);
+        return (<td><Tile color={this.padColor(co)} value={ch} i={i} func={this.props.f}/></td>);
+      }
+    
+      renderRow(r) {
+        return (<tr>{r.map( i => this.renderTile(i) )}</tr>);
+      }
+    
+      renderTable() {
+        console.log(this.props.f)
+        return (<table>{this.props.indices.map( r => this.renderRow(r))}</table>);
+    
+      }
+    
+      render() {
+        return (
+            <div>{this.renderTable()}</div>
+          );
+      }
+    
+    }
+    
+    export default App
+
+## App.css
+
+In the directory `src/`, keep the existing `App.css`, but add the following code at the end:
+
+### The Code
+    button {
+      background:none;
+      color:inherit;
+      border:none;
+      padding:0;
+      font:inherit;
+    }
+
+## Running the app
+
+You now have enough to run the frontend to the contract in its most simple form.
+
+Make sure that `testrpc` is running and that the Billboard contract is deployed. Then, from the root directory of your contract, run
+
+    npm run start
+
+`npm` will start the development server and launch Chromium, and the page will contain your board. At the moment, none of the cells have been claimed, so you'll see only empty squares. You may notice activity in `testrpc` when you refresh the browser. 
+
+![The Empty Board](images/chap4/emptyboard.png)
+![Selecting a cell](images/chap4/selectedcell.png)
+
+
+## Understanding the Code
+
+### React
+
+Although we're using [React.js](https://reactjs.org/) to build our page, this is not a react tutorial and we won't go into much depth here. Our main component is called "App", and we have components for the board as a whole and for the individual tiles, which allow us to generate the entire 3200-character board without using too much code. 
+
+### Web3
+
+We use the library [Web3](https://github.com/ethereum/web3.js/) to interact with the Blockchain from our browser.
+
+### Our app: Displaying the board
+
+We will represent the cells in the billboard as an array of 32-bit integers called `chars`. Each contains the ASCII character and the color of its associated tile, the same way we do in our contract. This makes it easy to pull the values from our contract directly into our array. The `<Board>` and `<Tile>` components, helped by the `boardIndices()` method, are responsible for displaying these characters on the page.
+
+We pass to the board the method `setCurrent()`, which will be called when the button in the `<Tile>` component is clicked, and records which tile is currently selected. For the moment, we aren't using this.
+
+
+### Our app: Using the Blockchain
+
+At the beginning of class `App` are these two lines:
+
+      contract = require('truffle-contract')
+      billboard = this.contract(BillboardContract)
+
+These use truffle's libraries to provide us access to the contract's API. Note that this is not the currently deployed instance of the contract, just the information about what the contract is.
+
+The `componentWillMount()` method:
+
+      componentWillMount() {
+        // Get network provider and web3 instance.
+        // See utils/getWeb3 for more info.
+    
+        getWeb3
+        .then(results => {
+          this.setState({
+            web3: results.web3
+          })
+    
+          // Instantiate contract once web3 provided.
+          this.billboard.setProvider(this.state.web3.currentProvider)
+          this.instantiateContract()
+        })
+        .catch(() => {
+          console.log('Error finding web3.')
+        })
+      }
+
+is called by React upon creating the App component. It get's the client's web3 provider, which in our case is MetaMask. It tells the page to use MetaMask as the web3 provider for the billboard contract. Note the use of asynchronous javascript, which is used heavily when interacting with the Blockchain. 
+
+`componentWillMount()` calls the `instantiateContract()` method. 
+
+      instantiateContract() {
+        // Declaring this for later so we can chain functions on Billboard.
+        var billboardInstance
+    
+        // Get accounts.
+        this.state.web3.eth.getAccounts((error, accounts) => {
+          this.billboard.deployed().then((instance) => {
+            billboardInstance = instance
+            return billboardInstance.getCells.call()
+          }).then((result) => {
+            return this.setState({ chars: result })
+          })
+        })
+      }
+
+
+Here, there are a couple nested asynchronous calls. First the method gets the list of accounts in the MetaMask wallet, and then gets the currently deployed instance of the billboard contract, putting it in the variable `billboardInstance`. 
+
+`billboardInstance.getCells.call()` Is our first method that actually interacts with the deployed contract. `getCells`, as you may remember, is the method we created in the contract to return the array of cell values. In this case, we use the `.call()` method. We can use this for methods such as this one that to not modify the state of the contract. It does not consume gas, and instead is run locally by web3, using the current state of the blockchain. 
+
+The `instantiateContract()` method concludes by saving the results of its call into the component's state, causing them to be displayed on the board. 
+
+[Previous Chapter](chap3.html) [Home Page](index.html) [Next Chapter](chap5.html)
+
+
+
+
+

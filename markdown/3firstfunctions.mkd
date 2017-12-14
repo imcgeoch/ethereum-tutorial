@@ -1,0 +1,131 @@
+# The Billboard Contract
+Now that we're comfortable with the basics of our toolchain, let's get started actually writing.
+
+## Billboard.sol
+
+### The first functions
+
+Create the file `contracts/Billboard.sol` and open it up in your text editor. (The `.sol` is for Solidity, the language we're writiing in.) Type in the following code:
+
+    pragma solidity ^0.4.2;
+
+    contract Billboard {
+
+     struct Cell {
+       uint price;
+       address owner;
+     }
+
+     Cell[3200] public cells;
+     bytes4[3200] public characters;
+
+     function Billboard() {
+
+     }
+
+     function getCells() public returns (bytes4[3200]) {
+        return (characters);
+     }
+
+    }
+### Understanding the code
+Let's take a look through and understand what each part does. 
+
+The line:
+
+    pragma solidity ^0.4.2;
+
+is required at the start of each solidity file to let the compler know whch version we're requiring.
+
+The entire contract is contained within 
+
+    contract Billboard {...}
+
+We define a `struct` named Cell, containing an unsigned (256 bit) `int`, and a variable of type `address`, which contains an Ethereum address. 
+
+     struct Cell {
+       uint price;
+       address owner;
+     }
+
+Then we define two arrays, 
+
+     Cell[3200] public cells;
+     bytes4[3200] public characters;
+
+one containing our Cell struct, and one containing the values that will be in each cell. We're going to pack the value for each cell into a four-byte value, where the first byte is the extended ascii character, and the next three bytes are the color. We might have included this in the `Cell` struct, but storing it separately from the other information about the cell will make returning it more straightforward.  
+
+
+Our contract has a constructor, which looks like this:
+
+    function Billboard() { }
+
+In our case, we don't need to do anything in the constructor, so we're going to leave it empty.
+
+Finally, we supply a getter function for our characters array.
+
+     function getCells() public returns (bytes4[3200]) {
+        return (characters);
+     }
+
+In solidity, getters for individual values of arrays are created automatically, but to return the array in its entirity, we'll need to write our own. This is where it's useful to have the characters as a separate array from the other cell information: the only thing we want to return *en masse* is the characters.
+
+## Compiling and deploying
+
+Save the file and, in your project root, run
+
+    $ truffle compile
+
+You should see:
+
+    Compiling ./contracts/Billboard.sol...
+    Writing artifacts to ./build/contracts
+
+Next, open up the file `migrations/2_deploy_contracts.js`. Modify it so that it looks like:
+
+    var SimpleStorage = artifacts.require("./SimpleStorage.sol");
+    var Billboard = artifacts.require("./Billboard.sol");
+
+
+    module.exports = function(deployer) {
+      deployer.deploy(SimpleStorage);
+      deployer.deploy(Billboard);
+    };
+
+The `migrations` folder contains code that dictates how truffle deploys our code to the Blockchain. You may notice that it runs in two stages, one that deploys the "deployer" contract, and one that deploys the contracts thaat we have written. The details of this are not important to our project.
+
+Then, make sure `testrpc` is running in another terminal window, and enter:
+
+    $ truffle migrate
+
+Your screen should light up with:
+
+	Compiling ./contracts/Billboard.sol...
+	Writing artifacts to ./build/contracts
+
+	Using network 'development'.
+
+	Running migration: 1_initial_migration.js
+	Deploying Migrations...
+	... 0xaab8de38f709d7f59bbf46b600122d18bb553f41ca1594783ca025f3bbbc0285
+	Migrations: 0x7ab1be735295011b2dbe683b628e5c6bdff42c40
+	Saving successful migration to network...
+	... 0x78e9dc3ee8369278c3089d921a28350c95a226b17e8b5e3030d4fdcf1c3953b1
+	Saving artifacts...
+	Running migration: 2_deploy_contracts.js
+	Deploying SimpleStorage...
+	... 0x899cf1ed8b0870ea6ec5411dbc03c866172a1672c52ce48f97d48963ec2db4b0
+	SimpleStorage: 0xb5b5a4bbccb93560a8e2196490dc787206c1e5b9
+	Deploying Billboard...
+	... 0x14ce2b426aa43ee55bffe44d6da0a4f1aa871247c4b69d249ce2e8a24105080d
+	Billboard: 0xa7f38a9540bde9f8a1dd334c8f7bf7e0fe9389ed
+	Saving successful migration to network...
+	... 0xa4321b5e9d7e5e2983e705c26a11a94d024c202fe520cbee00e2c8c8265b1fc3
+	Saving artifacts...
+
+And *voila*! Your first contract is deployed to the blockchain.
+
+In the next chapter, we'll set up our web front end so that we can view it. 
+
+
+[Previous Chapter](chap2.html) [Home Page](index.html) [Next Chapter](chap4.html)

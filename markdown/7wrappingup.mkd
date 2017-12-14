@@ -1,0 +1,13 @@
+# Wrapping Up
+We've successfully built a simple contract from the ground up, and interacted with it through a web frontend. 
+
+Our contract allowed users to submit transactions that modified the state and see their changes reflected in the blockchain. We've become familiar with a basic design pattern for sending Ether with a contract, as well as with the idea of addresses owining part of a contract. 
+
+We've learned some of **Solidity**'s langauge features, including mappings, structs, functions, and modifiers. On the web side, we've gained a little bit of experience with the **Web3** Javascript library and the **MetaMask** plugin. We've also gotten our feet wet using **Truffle** and **testrpc** as development tools. 
+
+So where to go from here? At this point, you may have your own ideas of a contract you'd like to build. Unbox a new Truffle box and give it a shot! There are many features of Truffle that this guide did not have time to address, such as unit tests and the Truffle console. Both of these can be important tools and I encourage you to get familiar with them. We also did not have time to discuss deploying your contract, for real, to the main network. That's a topic for another guide, but would make for an interesting next step. 
+
+My hope is that this guide has given you enough of a start in smart contract development that you're ready to pick up from here on your own. I wish you the best of luck!
+
+
+[Previous Chapter](chap6.html) [Home Page](index.html) [Next Chapter](appendix.html)
