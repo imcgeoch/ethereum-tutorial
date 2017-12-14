@@ -13,15 +13,16 @@ The first chapter of this guide discusses preparing a development environment, a
 Thank you to Professor Brian Levine, Monark Modi, Shirish Pokharel, and Sunny for their advice and support. I hope that this guide will be as interesting for you to read as it was from me to write.
 
 Ian McGeoch, December 2017
+
 imcgeoch at cs dot umass dot edu
 
 ## Table of Contents
-* \0. [Preface/ Table of Contents](index.html)
-* \1. [Getting Started](chap1.html)
-* \2. [Hello, Contract!](chap2.html)
-* \3. [The Billboard Contract](chap3.html)
-* \4. [Building the Front-end](chap4.html)
-* \5. [Modifying the Board](chap5.html)
-* \6. [Adding Payment](chap6.html)
-* \7. [Wrapping Up](chap7.html)
-* \8. [Appendix](chap8.html)
+* 0\. [Preface/ Table of Contents](index.html)
+* 1\. [Getting Started](chap1.html)
+* 2\. [Hello, Contract!](chap2.html)
+* 3\. [The Billboard Contract](chap3.html)
+* 4\. [Building the Front-end](chap4.html)
+* 5\. [Modifying the Board](chap5.html)
+* 6\. [Adding Payment](chap6.html)
+* 7\. [Wrapping Up](chap7.html)
+* 8\. [Appendix](chap8.html)
