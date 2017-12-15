@@ -263,7 +263,7 @@ This is what the final state of the four files we'll modify will look like, afte
       							     <button onClick={() =>
       									   this.changeCell(
                              this.state.current,
-      											 (this.state.cellch << 24) + parseInt(this.state.cellcolor, 16)
+      											 ((this.state.cellch << 24)>>>0) + parseInt(this.state.cellcolor, 16)
       									   )}> Change Cell </button>
       								 </div>
                  <div className="action">

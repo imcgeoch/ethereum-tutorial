@@ -80,7 +80,7 @@ In the App component's `render()` function, after the `topBar` div and before th
          <button onClick={() =>
            this.changeCell(
            this.state.current,
-           (this.state.cellch<<24) + parseInt(this.state.cellcolor, 16)
+           ((this.state.cellch<<24)>>>0) + parseInt(this.state.cellcolor, 16)
           )}> Change Cell </button>
       </div>
     </div>
