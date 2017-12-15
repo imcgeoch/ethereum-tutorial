@@ -25,4 +25,4 @@ imcgeoch at cs dot umass dot edu
 * 5\. [Modifying the Board](chap5.html)
 * 6\. [Adding Payment](chap6.html)
 * 7\. [Wrapping Up](chap7.html)
-* 8\. [Appendix](chap8.html)
+* 8\. [Appendix](appendix.html)
